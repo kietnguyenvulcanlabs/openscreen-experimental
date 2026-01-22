@@ -93,7 +93,13 @@ export class MouseTracker {
     });
 
     // Start the uIOhook event loop
-    uIOhook.start();
+    try {
+      uIOhook.start();
+    } catch (error) {
+      console.error('Failed to start uIOhook (accessibility permissions may not be granted):', error);
+      this.isTracking = false;
+      throw new Error('Failed to start mouse tracking. Please grant accessibility permissions in System Preferences.');
+    }
   }
 
   stop(): CursorEvent[] {

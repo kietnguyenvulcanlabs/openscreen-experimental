@@ -16,6 +16,7 @@ export function LaunchWindow() {
   const [autoZoom, setAutoZoom] = useState(false);
   const [recordingStart, setRecordingStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [accessibilityGranted, setAccessibilityGranted] = useState(true);
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
@@ -59,9 +60,26 @@ export function LaunchWindow() {
     };
 
     checkSelectedSource();
-    
+
     const interval = setInterval(checkSelectedSource, 500);
     return () => clearInterval(interval);
+  }, []);
+
+  // Check accessibility permissions on mount (macOS only)
+  useEffect(() => {
+    const checkAccessibility = async () => {
+      if (window.electronAPI?.checkAccessibilityPermissions) {
+        try {
+          const result = await window.electronAPI.checkAccessibilityPermissions();
+          setAccessibilityGranted(result.success && result.granted);
+        } catch (error) {
+          console.error('Failed to check accessibility permissions:', error);
+          setAccessibilityGranted(false);
+        }
+      }
+    };
+
+    checkAccessibility();
   }, []);
 
   const openSourceSelector = () => {
@@ -84,6 +102,10 @@ export function LaunchWindow() {
   };
 
   const handleAutoZoomToggle = (checked: boolean) => {
+    if (!accessibilityGranted && checked) {
+      alert('Auto-Zoom requires accessibility permissions.\n\nPlease grant permissions in System Preferences > Privacy & Security > Accessibility and restart the app.');
+      return;
+    }
     setAutoZoom(checked);
     setAutoZoomEnabled(checked);
   };
@@ -167,12 +189,13 @@ export function LaunchWindow() {
         <div className="w-px h-6 bg-white/30" />
 
         <div className={`flex items-center gap-1.5 ${styles.electronNoDrag}`}>
-          <span className="text-white text-[10px]">Auto-Zoom</span>
+          <span className="text-white text-[10px]" style={{ opacity: !accessibilityGranted ? 0.5 : 1 }}>Auto-Zoom</span>
           <Switch
             checked={autoZoom}
             onCheckedChange={handleAutoZoomToggle}
-            disabled={recording}
+            disabled={recording || !accessibilityGranted}
             className="scale-75"
+            title={!accessibilityGranted ? 'Requires accessibility permissions' : ''}
           />
         </div>
 

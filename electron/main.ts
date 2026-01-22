@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, Tray, Menu, nativeImage, systemPreferences, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs/promises'
@@ -18,6 +18,60 @@ async function ensureRecordingsDir() {
     console.log('User Data Path:', app.getPath('userData'))
   } catch (error) {
     console.error('Failed to create recordings directory:', error)
+  }
+}
+
+/**
+ * Check and request macOS accessibility permissions
+ * This is required for uiohook-napi (Auto-Zoom cursor tracking)
+ */
+async function checkAccessibilityPermissions() {
+  // Only check on macOS
+  if (process.platform !== 'darwin') {
+    return true;
+  }
+
+  try {
+    // Check if we have accessibility permissions
+    const isTrusted = systemPreferences.isTrustedAccessibilityClient(false);
+
+    if (!isTrusted) {
+      console.log('Accessibility permissions not granted. Prompting user...');
+
+      // Prompt user to grant accessibility permissions
+      const promptResult = systemPreferences.isTrustedAccessibilityClient(true);
+
+      if (!promptResult) {
+        console.log('User needs to grant accessibility permissions in System Preferences');
+
+        // Show dialog to inform user
+        const { dialog } = await import('electron');
+        const result = await dialog.showMessageBox({
+          type: 'info',
+          title: 'Accessibility Permission Required',
+          message: 'OpenScreen needs accessibility permissions to enable Auto-Zoom features.',
+          detail: 'To use Auto-Zoom cursor tracking:\n\n1. Click "Open System Preferences"\n2. Grant accessibility permission to OpenScreen\n3. Restart the app\n\nYou can still use OpenScreen without this permission, but Auto-Zoom will be unavailable.',
+          buttons: ['Open System Preferences', 'Continue Without Auto-Zoom'],
+          defaultId: 0,
+          cancelId: 1
+        });
+
+        if (result.response === 0) {
+          // Open System Preferences > Privacy & Security > Accessibility
+          await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility');
+        }
+
+        return false;
+      }
+
+      return promptResult;
+    }
+
+    console.log('Accessibility permissions already granted');
+    return true;
+  } catch (error) {
+    console.error('Error checking accessibility permissions:', error);
+    return false;
   }
 }
 
@@ -147,6 +201,9 @@ app.whenReady().then(async () => {
     updateTrayMenu()
   // Ensure recordings directory exists
   await ensureRecordingsDir()
+
+  // Check accessibility permissions on macOS (required for Auto-Zoom)
+  await checkAccessibilityPermissions()
 
   registerIpcHandlers(
     createEditorWindowWrapper,

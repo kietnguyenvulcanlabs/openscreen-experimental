@@ -59,6 +59,7 @@ interface Window {
     getCursorEvents: () => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
     storeCursorEvents: (events: CursorEvent[], videoPath: string) => Promise<{ success: boolean; path?: string; error?: string }>
     loadCursorEvents: (videoPath: string) => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
+    checkAccessibilityPermissions: () => Promise<{ success: boolean; granted: boolean; error?: string }>
     hudOverlayHide: () => void
     hudOverlayClose: () => void
   }

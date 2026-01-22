@@ -1,4 +1,4 @@
-import { ipcMain, desktopCapturer, BrowserWindow, shell, app, dialog } from 'electron'
+import { ipcMain, desktopCapturer, BrowserWindow, shell, app, dialog, systemPreferences } from 'electron'
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -277,6 +277,21 @@ export function registerIpcHandlers(
       }
       console.error('Failed to load cursor events:', error);
       return { success: false, error: String(error), events: [] };
+    }
+  });
+
+  // Check accessibility permissions (macOS only)
+  ipcMain.handle('check-accessibility-permissions', () => {
+    if (process.platform !== 'darwin') {
+      return { success: true, granted: true };
+    }
+
+    try {
+      const isTrusted = systemPreferences.isTrustedAccessibilityClient(false);
+      return { success: true, granted: isTrusted };
+    } catch (error) {
+      console.error('Failed to check accessibility permissions:', error);
+      return { success: false, granted: false, error: String(error) };
     }
   });
 }

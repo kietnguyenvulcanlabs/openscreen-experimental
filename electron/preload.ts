@@ -78,4 +78,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadCursorEvents: (videoPath: string) => {
     return ipcRenderer.invoke('load-cursor-events', videoPath)
   },
+  checkAccessibilityPermissions: () => {
+    return ipcRenderer.invoke('check-accessibility-permissions')
+  },
 })

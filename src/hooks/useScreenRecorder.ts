@@ -201,6 +201,18 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       // Start mouse tracking if auto-zoom is enabled
       if (autoZoomEnabled && window.electronAPI?.startMouseTracking) {
         try {
+          // Check accessibility permissions before starting mouse tracking
+          if (window.electronAPI?.checkAccessibilityPermissions) {
+            const permissionResult = await window.electronAPI.checkAccessibilityPermissions();
+
+            if (!permissionResult.success || !permissionResult.granted) {
+              console.warn('Accessibility permissions not granted. Mouse tracking disabled.');
+              alert('Auto-Zoom requires accessibility permissions.\n\nPlease grant permissions in System Preferences > Privacy & Security > Accessibility and restart the app.');
+              // Continue recording without mouse tracking
+              return;
+            }
+          }
+
           await window.electronAPI.startMouseTracking({
             sourceId: selectedSource.id,
             recordingStartTime: startTime.current,
@@ -208,6 +220,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
           console.log('Mouse tracking started');
         } catch (error) {
           console.error('Failed to start mouse tracking:', error);
+          alert('Failed to start Auto-Zoom cursor tracking.\n\nPlease check that accessibility permissions are granted in System Preferences.');
         }
       }
     } catch (error) {
