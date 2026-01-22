@@ -4,10 +4,12 @@ import { fixWebmDuration } from "@fix-webm-duration/fix";
 type UseScreenRecorderReturn = {
   recording: boolean;
   toggleRecording: () => void;
+  setAutoZoomEnabled: (enabled: boolean) => void;
 };
 
 export function useScreenRecorder(): UseScreenRecorderReturn {
   const [recording, setRecording] = useState(false);
+  const [autoZoomEnabled, setAutoZoomEnabled] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -45,7 +47,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
     return Math.round(18_000_000 * highFrameRateBoost);
   };
 
-  const stopRecording = useRef(() => {
+  const stopRecording = useRef(async () => {
     if (mediaRecorder.current?.state === "recording") {
       if (stream.current) {
         stream.current.getTracks().forEach(track => track.stop());
@@ -54,6 +56,15 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       setRecording(false);
 
       window.electronAPI?.setRecordingState(false);
+
+      // Stop mouse tracking if enabled
+      if (autoZoomEnabled && window.electronAPI?.stopMouseTracking) {
+        try {
+          await window.electronAPI.stopMouseTracking();
+        } catch (error) {
+          console.error('Failed to stop mouse tracking:', error);
+        }
+      }
     }
   });
 
@@ -161,6 +172,19 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
           if (videoResult.path) {
             await window.electronAPI.setCurrentVideoPath(videoResult.path);
+
+            // Store cursor events if auto-zoom is enabled
+            if (autoZoomEnabled && window.electronAPI?.stopMouseTracking && window.electronAPI?.storeCursorEvents) {
+              try {
+                const result = await window.electronAPI.stopMouseTracking();
+                if (result.success && result.events.length > 0) {
+                  await window.electronAPI.storeCursorEvents(result.events, videoResult.path);
+                  console.log(`Stored ${result.events.length} cursor events`);
+                }
+              } catch (error) {
+                console.error('Failed to store cursor events:', error);
+              }
+            }
           }
 
           await window.electronAPI.switchToEditor();
@@ -173,6 +197,19 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
       startTime.current = Date.now();
       setRecording(true);
       window.electronAPI?.setRecordingState(true);
+
+      // Start mouse tracking if auto-zoom is enabled
+      if (autoZoomEnabled && window.electronAPI?.startMouseTracking) {
+        try {
+          await window.electronAPI.startMouseTracking({
+            sourceId: selectedSource.id,
+            recordingStartTime: startTime.current,
+          });
+          console.log('Mouse tracking started');
+        } catch (error) {
+          console.error('Failed to start mouse tracking:', error);
+        }
+      }
     } catch (error) {
       console.error('Failed to start recording:', error);
       setRecording(false);
@@ -187,5 +224,5 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
     recording ? stopRecording.current() : startRecording();
   };
 
-  return { recording, toggleRecording };
+  return { recording, toggleRecording, setAutoZoomEnabled };
 }

@@ -5,12 +5,18 @@ export interface ZoomFocus {
   cy: number; // normalized vertical center (0-1)
 }
 
+export interface ZoomKeyframe {
+  timestamp: number;
+  focus: ZoomFocus;
+}
+
 export interface ZoomRegion {
   id: string;
   startMs: number;
   endMs: number;
   depth: ZoomDepth;
   focus: ZoomFocus;
+  keyframes?: ZoomKeyframe[];
 }
 
 export interface TrimRegion {
@@ -129,4 +135,26 @@ export function clampFocusToDepth(focus: ZoomFocus, _depth: ZoomDepth): ZoomFocu
 function clamp(value: number, min: number, max: number) {
   if (Number.isNaN(value)) return (min + max) / 2;
   return Math.min(max, Math.max(min, value));
+}
+
+// Cursor types
+export interface CursorEvent {
+  type: 'move' | 'click' | 'scroll';
+  timestamp: number;
+  x: number;
+  y: number;
+  normalizedX: number;
+  normalizedY: number;
+  button?: number;
+  scrollDelta?: number;
+}
+
+export type CursorStyle = 'windows' | 'mac-black' | 'mac-white' | 'circle' | 'ring' | 'dot';
+
+export interface CursorSettings {
+  enabled: boolean;
+  style: CursorStyle;
+  size: number;
+  opacity: number;
+  clickAnimation: boolean;
 }

@@ -9,6 +9,17 @@ interface ProcessedDesktopSource {
   appIcon: string | null;
 }
 
+interface CursorEvent {
+  type: 'move' | 'click' | 'scroll';
+  timestamp: number;
+  x: number;
+  y: number;
+  normalizedX: number;
+  normalizedY: number;
+  button?: number;
+  scrollDelta?: number;
+}
+
 interface Window {
   electronAPI: {
     getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>
@@ -42,5 +53,13 @@ interface Window {
     setCurrentVideoPath: (path: string) => Promise<{ success: boolean }>
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
+    getPlatform: () => Promise<string>
+    startMouseTracking: (config: { sourceId: string; recordingStartTime: number }) => Promise<{ success: boolean; error?: string }>
+    stopMouseTracking: () => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
+    getCursorEvents: () => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
+    storeCursorEvents: (events: CursorEvent[], videoPath: string) => Promise<{ success: boolean; path?: string; error?: string }>
+    loadCursorEvents: (videoPath: string) => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
+    hudOverlayHide: () => void
+    hudOverlayClose: () => void
   }
 }

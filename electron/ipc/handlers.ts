@@ -3,6 +3,7 @@ import { ipcMain, desktopCapturer, BrowserWindow, shell, app, dialog } from 'ele
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { RECORDINGS_DIR } from '../main'
+import { getMouseTracker, CursorEvent } from '../mouse-tracker'
 
 let selectedSource: any = null
 
@@ -216,5 +217,66 @@ export function registerIpcHandlers(
 
   ipcMain.handle('get-platform', () => {
     return process.platform;
+  });
+
+  // Mouse tracking handlers
+  ipcMain.handle('start-mouse-tracking', (_, config: { sourceId: string; recordingStartTime: number }) => {
+    try {
+      const tracker = getMouseTracker();
+      tracker.start(config);
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to start mouse tracking:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('stop-mouse-tracking', () => {
+    try {
+      const tracker = getMouseTracker();
+      const events = tracker.stop();
+      return { success: true, events };
+    } catch (error) {
+      console.error('Failed to stop mouse tracking:', error);
+      return { success: false, error: String(error), events: [] };
+    }
+  });
+
+  ipcMain.handle('get-cursor-events', () => {
+    try {
+      const tracker = getMouseTracker();
+      const events = tracker.getEvents();
+      return { success: true, events };
+    } catch (error) {
+      console.error('Failed to get cursor events:', error);
+      return { success: false, error: String(error), events: [] };
+    }
+  });
+
+  ipcMain.handle('store-cursor-events', async (_, events: CursorEvent[], videoPath: string) => {
+    try {
+      const cursorEventsPath = videoPath.replace(/\.(webm|mp4)$/i, '-cursor-events.json');
+      await fs.writeFile(cursorEventsPath, JSON.stringify(events, null, 2));
+      return { success: true, path: cursorEventsPath };
+    } catch (error) {
+      console.error('Failed to store cursor events:', error);
+      return { success: false, error: String(error) };
+    }
+  });
+
+  ipcMain.handle('load-cursor-events', async (_, videoPath: string) => {
+    try {
+      const cursorEventsPath = videoPath.replace(/\.(webm|mp4)$/i, '-cursor-events.json');
+      const data = await fs.readFile(cursorEventsPath, 'utf-8');
+      const events = JSON.parse(data) as CursorEvent[];
+      return { success: true, events };
+    } catch (error) {
+      // File might not exist, which is ok
+      if ((error as any).code === 'ENOENT') {
+        return { success: true, events: [] };
+      }
+      console.error('Failed to load cursor events:', error);
+      return { success: false, error: String(error), events: [] };
+    }
   });
 }

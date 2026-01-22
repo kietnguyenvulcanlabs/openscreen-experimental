@@ -27,7 +27,9 @@ import {
   type AnnotationRegion,
   type CropRegion,
   type FigureData,
+  type CursorEvent,
 } from "./types";
+import { generateAutoZoomRegions, DEFAULT_AUTO_ZOOM_CONFIG } from "@/utils/cursorUtils";
 import { VideoExporter, GifExporter, type ExportProgress, type ExportQuality, type ExportSettings, type ExportFormat, type GifFrameRate, type GifSizePreset, GIF_SIZE_PRESETS, calculateOutputDimensions } from "@/lib/exporter";
 import { type AspectRatio, getAspectRatioValue } from "@/utils/aspectRatioUtils";
 import { getAssetPath } from "@/lib/assetPath";
@@ -65,6 +67,14 @@ export default function VideoEditor() {
   const [gifFrameRate, setGifFrameRate] = useState<GifFrameRate>(15);
   const [gifLoop, setGifLoop] = useState(true);
   const [gifSizePreset, setGifSizePreset] = useState<GifSizePreset>('medium');
+  const [cursorEvents, setCursorEvents] = useState<CursorEvent[]>([]);
+  // const [cursorSettings, setCursorSettings] = useState<CursorSettings>({
+  //   enabled: false,
+  //   style: 'mac-black',
+  //   size: 24,
+  //   opacity: 1,
+  //   clickAnimation: true,
+  // });
 
   const videoPlaybackRef = useRef<VideoPlaybackRef>(null);
   const nextZoomIdRef = useRef(1);
@@ -93,10 +103,23 @@ export default function VideoEditor() {
     async function loadVideo() {
       try {
         const result = await window.electronAPI.getCurrentVideoPath();
-        
+
         if (result.success && result.path) {
           const videoUrl = toFileUrl(result.path);
           setVideoPath(videoUrl);
+
+          // Load cursor events if available
+          if (window.electronAPI?.loadCursorEvents) {
+            try {
+              const cursorResult = await window.electronAPI.loadCursorEvents(result.path);
+              if (cursorResult.success && cursorResult.events.length > 0) {
+                setCursorEvents(cursorResult.events);
+                console.log(`Loaded ${cursorResult.events.length} cursor events`);
+              }
+            } catch (err) {
+              console.warn('Failed to load cursor events:', err);
+            }
+          }
         } else {
           setError('No video to load. Please record or select a video.');
         }
@@ -125,6 +148,21 @@ export default function VideoEditor() {
     })();
     return () => { mounted = false };
   }, []);
+
+  // Generate auto-zoom regions from cursor events
+  useEffect(() => {
+    if (cursorEvents.length > 0 && duration > 0) {
+      const autoZoomRegions = generateAutoZoomRegions(
+        cursorEvents,
+        { ...DEFAULT_AUTO_ZOOM_CONFIG, enabled: true },
+        duration
+      );
+      if (autoZoomRegions.length > 0) {
+        setZoomRegions(prev => [...prev, ...autoZoomRegions]);
+        toast.success(`Generated ${autoZoomRegions.length} auto-zoom regions from cursor clicks`);
+      }
+    }
+  }, [cursorEvents, duration]);
 
   function togglePlayPause() {
     const playback = videoPlaybackRef.current;

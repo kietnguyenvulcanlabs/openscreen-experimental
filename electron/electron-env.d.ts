@@ -21,6 +21,18 @@ declare namespace NodeJS {
   }
 }
 
+// Cursor event types
+export interface CursorEvent {
+  type: 'move' | 'click' | 'scroll';
+  timestamp: number;
+  x: number;
+  y: number;
+  normalizedX: number;
+  normalizedY: number;
+  button?: number;
+  scrollDelta?: number;
+}
+
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
   electronAPI: {
@@ -40,6 +52,11 @@ interface Window {
     getCurrentVideoPath: () => Promise<{ success: boolean; path?: string }>
     clearCurrentVideoPath: () => Promise<{ success: boolean }>
     getPlatform: () => Promise<string>
+    startMouseTracking: (config: { sourceId: string; recordingStartTime: number }) => Promise<{ success: boolean; error?: string }>
+    stopMouseTracking: () => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
+    getCursorEvents: () => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
+    storeCursorEvents: (events: CursorEvent[], videoPath: string) => Promise<{ success: boolean; path?: string; error?: string }>
+    loadCursorEvents: (videoPath: string) => Promise<{ success: boolean; events: CursorEvent[]; error?: string }>
     hudOverlayHide: () => void;
     hudOverlayClose: () => void;
   }

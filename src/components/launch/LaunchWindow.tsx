@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import styles from "./LaunchWindow.module.css";
 import { useScreenRecorder } from "../../hooks/useScreenRecorder";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
 import { BsRecordCircle } from "react-icons/bs";
 import { FaRegStopCircle } from "react-icons/fa";
 import { MdMonitor } from "react-icons/md";
@@ -11,7 +12,8 @@ import { FiMinus, FiX } from "react-icons/fi";
 import { ContentClamp } from "../ui/content-clamp";
 
 export function LaunchWindow() {
-  const { recording, toggleRecording } = useScreenRecorder();
+  const { recording, toggleRecording, setAutoZoomEnabled } = useScreenRecorder();
+  const [autoZoom, setAutoZoom] = useState(false);
   const [recordingStart, setRecordingStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
 
@@ -70,15 +72,20 @@ export function LaunchWindow() {
 
   const openVideoFile = async () => {
     const result = await window.electronAPI.openVideoFilePicker();
-    
+
     if (result.cancelled) {
       return;
     }
-    
+
     if (result.success && result.path) {
       await window.electronAPI.setCurrentVideoPath(result.path);
       await window.electronAPI.switchToEditor();
     }
+  };
+
+  const handleAutoZoomToggle = (checked: boolean) => {
+    setAutoZoom(checked);
+    setAutoZoomEnabled(checked);
   };
 
   // IPC events for hide/close
@@ -156,6 +163,18 @@ export function LaunchWindow() {
           <FaFolderMinus size={14} className="text-white" />
           <span className={styles.folderText}>Open</span>
         </Button>
+
+        <div className="w-px h-6 bg-white/30" />
+
+        <div className={`flex items-center gap-1.5 ${styles.electronNoDrag}`}>
+          <span className="text-white text-[10px]">Auto-Zoom</span>
+          <Switch
+            checked={autoZoom}
+            onCheckedChange={handleAutoZoomToggle}
+            disabled={recording}
+            className="scale-75"
+          />
+        </div>
 
          {/* Separator before hide/close buttons */}
         <div className="w-px h-6 bg-white/30 mx-2" />

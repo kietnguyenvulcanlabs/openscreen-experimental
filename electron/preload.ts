@@ -63,4 +63,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => {
     return ipcRenderer.invoke('get-platform')
   },
+  startMouseTracking: (config: { sourceId: string; recordingStartTime: number }) => {
+    return ipcRenderer.invoke('start-mouse-tracking', config)
+  },
+  stopMouseTracking: () => {
+    return ipcRenderer.invoke('stop-mouse-tracking')
+  },
+  getCursorEvents: () => {
+    return ipcRenderer.invoke('get-cursor-events')
+  },
+  storeCursorEvents: (events: any[], videoPath: string) => {
+    return ipcRenderer.invoke('store-cursor-events', events, videoPath)
+  },
+  loadCursorEvents: (videoPath: string) => {
+    return ipcRenderer.invoke('load-cursor-events', videoPath)
+  },
 })
