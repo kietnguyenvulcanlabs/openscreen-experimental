@@ -82,6 +82,7 @@ export default function VideoEditor() {
   const nextAnnotationIdRef = useRef(1);
   const nextAnnotationZIndexRef = useRef(1); // Track z-index for stacking order
   const exporterRef = useRef<VideoExporter | null>(null);
+  const hasGeneratedAutoZoomsRef = useRef(false);
 
   // Helper to convert file path to proper file:// URL
   const toFileUrl = (filePath: string): string => {
@@ -107,6 +108,9 @@ export default function VideoEditor() {
         if (result.success && result.path) {
           const videoUrl = toFileUrl(result.path);
           setVideoPath(videoUrl);
+
+          // Reset auto-zoom generation flag for new video
+          hasGeneratedAutoZoomsRef.current = false;
 
           // Load cursor events if available
           if (window.electronAPI?.loadCursorEvents) {
@@ -149,9 +153,9 @@ export default function VideoEditor() {
     return () => { mounted = false };
   }, []);
 
-  // Generate auto-zoom regions from cursor events
+  // Generate auto-zoom regions from cursor events (only once)
   useEffect(() => {
-    if (cursorEvents.length > 0 && duration > 0) {
+    if (cursorEvents.length > 0 && duration > 0 && !hasGeneratedAutoZoomsRef.current) {
       const autoZoomRegions = generateAutoZoomRegions(
         cursorEvents,
         { ...DEFAULT_AUTO_ZOOM_CONFIG, enabled: true },
@@ -160,6 +164,7 @@ export default function VideoEditor() {
       if (autoZoomRegions.length > 0) {
         setZoomRegions(prev => [...prev, ...autoZoomRegions]);
         toast.success(`Generated ${autoZoomRegions.length} auto-zoom regions from cursor clicks`);
+        hasGeneratedAutoZoomsRef.current = true;
       }
     }
   }, [cursorEvents, duration]);
@@ -239,6 +244,8 @@ export default function VideoEditor() {
               ...region,
               startMs: Math.round(span.start),
               endMs: Math.round(span.end),
+              // Clear keyframes when manually editing to avoid misalignment
+              keyframes: undefined,
             }
           : region,
       ),
